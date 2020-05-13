@@ -3,6 +3,7 @@
 
 # Env. 
 __pycache__/
+env/
 
 
 # data 
