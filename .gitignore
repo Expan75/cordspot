@@ -1,0 +1,9 @@
+# Dev depends.
+.vscode/
+
+# Env. 
+__pycache__/
+
+
+# data 
+data/
