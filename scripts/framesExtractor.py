@@ -5,8 +5,6 @@
 # General imports
 import cv2 as cv
 import os
-import numpy as np
-import pandas as pd
 from uuid import uuid4 as uuid
 
 # PATH SETUP: abs for now... TODO: make relative
@@ -26,52 +24,92 @@ def generateFrameFileName(label, extension=".jpg"):
     return f"{label}-" + str(uuid()) + extension
 
 
-def videos2Frames(video_dir, image_dir):
-    """Given a valid 
+def videos2Frames(video_dir, image_dir, nth_frame=30):
+    """Given a video directory and valid format videoss within it, translates each videos' frames as images
+    into an image dir, ensuring each photo is labeled and given an uuid. Returns blank.
 
     Arguments:
         video_path {[string]} -- [abs. file path to video file to be chopped up]
         image_dir {[string]} -- [image_dir to write saved frames (as images) to]
     """
-    # get filenames (NOTE: filenames == labels)
+    # get labels (filenames) (NOTE: filenames == labels)
     full_video_names = os.listdir(VIDEO_FOLDER)
     try:
         full_video_names.remove(".DS_Store")  # MAC COMPATABILITY
     except:
         pass
+
     labels = [name.split(".")[0] for name in full_video_names]
-
     # Iteratively go through and process each video into a labeled image
-    formattedFilePaths = list(
-        map(lambda name: formatPath(name, action="load"), full_video_names)
-    )
+    formattedVideoFilePaths = [
+        formatPath(name, action="load") for name in full_video_names
+    ]
 
-    def video2Frame(filepath):
+    def video2Frame(filepath, label):
         print(f"Capturing frames using {filepath}")
         vidcap = cv.VideoCapture(filepath)
         success, image = vidcap.read()
 
+        imgPaths = []
+
         while success:
-            # video filmed by iphone6 are filed in 30fps / we only need 1 frame per sec
-            filename = generateFrameFileName(labels[0], ".jpg")
+            # video filmed by iphone6 are filed in 30fps (no big difference from frame to frame => bias)
+            filename = generateFrameFileName(label, ".jpg")
             fullpath = os.path.join(IMAGE_FOLDER, filename)
+            imgPaths.append(fullpath)
             if not cv.imwrite(fullpath, image):
                 raise Exception("Could not write frame as image")
             success, image = vidcap.read()
+
+        return label, imgPaths
+
+    # Delete nth frames if given
+    def keepEveryNthFrame(absfilepaths, nth):
+        """Removes every nth file in a list of files
+
+        Arguments:
+            absfilepaths {[strings]} -- [abs paths to delete files at]
+            nth {int} -- [removes all but this picture]
+        """
+
+        filesToKeep = []
+        for file in absfilepaths[::nth]:
+            filesToKeep.append(file)
+
+        for file in absfilepaths:
+            if file not in filesToKeep:
+                ### Security: ensure we ONLY can delete .jpgs
+                try:
+                    os.remove(file)
+
+                except OSError as error:
+                    print(f"ERROR: could not remove {file}")
+            else:
+                continue
+        print("successfully removed all but every %i frame." % nth)
         return
 
+    meta = {}
     # Mine frames from videos
-    for path in formattedFilePaths:
-        video2Frame(path)
+    for path, label in zip(formattedVideoFilePaths, labels):
+        label, imgPaths = video2Frame(path, label)
+        print(label, imgPaths)
+        meta[label] = imgPaths
+
+    # Delete every nth if desired
+    if (nth_frame != 0) & (type(nth_frame) == int):
+        # Go through each classes files
+        for label in meta.keys():
+            keepEveryNthFrame(meta[label], nth_frame)
+    else:
+        print("ERROR: Please provide a valid argument for how frames to keep.")
+        return
 
     return
 
 
 # calls transform function
-videos2Frames(VIDEO_FOLDER, IMAGE_FOLDER)
-
-# As the image content does not shift dramatically per frame, we'll want to remove all but every n'th image
-# MINOR FUNCTION TO REMOVE ALL EXCEPT EVERY N'th image goes here...
+videos2Frames(VIDEO_FOLDER, IMAGE_FOLDER, nth_frame=60)
 
 
 print("Finished script gracefully...")

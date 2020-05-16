@@ -4,7 +4,10 @@
 # Env. 
 __pycache__/
 env/
-
+bin/
+include/
+lib/
+.Python
 
 # data 
 data/
