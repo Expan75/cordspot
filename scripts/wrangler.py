@@ -5,11 +5,16 @@ Images are rescaled in accordance with the targeted classifier (resnet in this c
 """
 # imports
 import os
-import cv2
+import cv2 as cv
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from PIL import Image
+
+# Let's get some utility functions for showing resized images and their corres. class
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import ImageGrid
+import random
 
 
 # Raw data sourcing paths
@@ -26,7 +31,8 @@ try:
 except:
     print("Could not generate val directory. They probably already exist")
 
-# get labels and their corresponding files
+
+# get labels and their corresponding files; TODO: encapsulate into reusuable function
 rawImagePaths = os.listdir(IMAGE_FOLDER)[1:]  # [0] == .DS_Datastore
 labels = pd.Series(list(map(lambda path: path.split("-")[0], rawImagePaths))).unique()
 labels_map = {}
@@ -36,37 +42,57 @@ for label in labels:
     ].tolist()
 
 
-# Let's get some utility functions for showing resized images and their corres. class
-import matplotlib as plt
+# Square image TODO: fix and incorperate into pipeline
+def squarifyImage(image, axis="x"):
+    raw_height, raw_width, channels = image.shape
+    size = raw_width if axis.lower() else raw_height
+    return image.resize(((size) // 2, (size) // 2))
 
 
-def inspect(n, label):
-    """Utlity function for inspecting n images (displaying them using matplotlib),
-        their dimensions as well as their given label.
+# Inspect a random subset of images from a given label
+def inspectNLabeledImages(label, labeldict, n=4, image_folder=IMAGE_FOLDER):
+    """Utility function for inspected an N subset of images denoted by a given label from a given folder.
 
     Arguments:
-        n {int} -- [description]
+        label {string} -- String representation of the class label for a given image
+        labeldict {dict} -- Dictionary containing a list of file references for each label (label: [filenames])
 
-    Returns:
-        [None] -- [description]
+    Keyword Arguments:
+        n {int} -- [how many random samples to showed] (default: {4})
+        image_folder {[string]} -- [Abs path to the source image folder] (default: {IMAGE_FOLDER})
     """
 
+    # Ensure that we can always get a square grid
+    if n % 2 != 0:
+        n += 1
 
-# print(labels_map)
-testImg1 = "/Users/Erik/Dev/plugdetector/data/test/iphone_charger-17c8b67c-017c-4731-9cbd-e62b2b2ed3e3.jpg"
-testImg2 = "/Users/Erik/Dev/plugdetector/data/raw/images/power_female-060bb229-3ac2-4ada-8a0a-00c03edffd1a.jpg"
-testImg3 = "/Users/Erik/Dev/plugdetector/data/raw/images/microphone_male-fae1c7f1-1e99-4bc8-942f-8f04014c9811.jpg"
-# we want to go from (1080, 1920) to (300, 300)
-img = Image.open(testImg3)
-raw_height, raw_width = img.size
-print(img.size)
+    image_data = [
+        cv.imread(os.path.join(image_folder, path))
+        for path in random.sample(labels_map[label], n)
+    ]
 
-img = img.resize(((raw_height) // 2, (raw_height) // 2,))
-img.show()
-print("print size after resize: ", img.size)
+    fig = plt.figure(figsize=(10.0, 6.0))
+    fig.suptitle(label)
+    grid = ImageGrid(
+        fig,
+        111,  # similar to subplot(111)
+        nrows_ncols=(2, 2),  # creates 2x2 grid of axes
+        axes_pad=0.1,  # pad between axes in inch.
+    )
 
-# Square image
-def squarifyImage(image, axis="x"):
-    raw_height, raw_width = img.size
-    if resize
-    return img.resize(((raw_height) // 2, (raw_height) // 2))
+    for ax, im in zip(grid, image_data):
+        # Iterating over the grid returns the Axes.
+        ax.imshow(im)
+
+    plt.show()
+
+    return
+
+
+# OUTPUT ALL LABELS
+# for label in labels:
+#     print(label)
+
+# Inspect a random subset of each class
+# for label in labels:
+#     inspectNLabeledImages(label, labels_map)
