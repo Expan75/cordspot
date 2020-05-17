@@ -4,17 +4,15 @@ contains train images XOR validation images from a label.
 Images are rescaled in accordance with the targeted classifier (resnet in this case)
 """
 # imports
-import os
+import random
 import cv2 as cv
-import numpy as np
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from PIL import Image
-
-# Let's get some utility functions for showing resized images and their corres. class
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import ImageGrid
-import random
+import numpy as np
+import os
+import pandas as pd
+from PIL import Image
+from sklearn.model_selection import train_test_split
 
 
 # Raw data sourcing paths
@@ -40,13 +38,6 @@ for label in labels:
     labels_map[label] = pd.Series(rawImagePaths)[
         pd.Series(rawImagePaths).str.contains(label)
     ].tolist()
-
-
-# Square image TODO: fix and incorperate into pipeline
-def squarifyImage(image, axis="x"):
-    raw_height, raw_width, channels = image.shape
-    size = raw_width if axis.lower() else raw_height
-    return image.resize(((size) // 2, (size) // 2))
 
 
 # Inspect a random subset of images from a given label
@@ -90,9 +81,48 @@ def inspectNLabeledImages(label, labeldict, n=4, image_folder=IMAGE_FOLDER):
 
 
 # OUTPUT ALL LABELS
-# for label in labels:
-#     print(label)
+for label in labels:
+    print(label)
 
 # Inspect a random subset of each class
 # for label in labels:
 #     inspectNLabeledImages(label, labels_map)
+
+""" With util out of the way, let's set up our data transformation pipeline """
+
+# Square image TODO: fix and incorperate into pipeline
+def squarifyImage(image, axis="x"):
+    raw_height, raw_width, channels = image.shape
+    size = raw_width if axis.lower() else raw_height
+    new_shape = (size // 2, size // 2, channels)
+    return np.resize(image, new_shape)
+
+
+def transformRawImages(image_files):
+
+    # read images
+    images = [
+        cv.imread(os.path.join(IMAGE_FOLDER, image_path)) for image_path in image_files
+    ]
+
+    # transform
+    images = [squarifyImage(image) for image in images]  # centercrop
+    images = [cv.cvtColor(image, cv.COLOR_BGR2GRAY) for image in images]  # grayscale
+
+    ### TODO: add downsampling step
+
+    return images
+
+
+# sample usage
+from utils import generateFrameFileName
+
+label = "usb_B"
+filename = generateFrameFileName(label)
+save_path = os.path.join(PROCESSED_PATH, "unsorted")
+transformed_images = transformRawImages(labels_map[label])
+print(len(transformed_images))
+
+for image in transformed_images:
+    fullPath = os.path.join(save_path, filename)
+    cv.imwrite(fullPath, image)
