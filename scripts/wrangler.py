@@ -1,6 +1,5 @@
 """Wrangles images into neatly train/val sets of directories where each directory
 contains train images XOR validation images from a label.
-
 Images are rescaled in accordance with the targeted classifier (resnet in this case)
 """
 # imports
@@ -73,11 +72,9 @@ def imagePipeline(img):
     """Composes transformers into a pipeline that can be applied to multiple images.
     Takes in a raw (opened) image and returns the square, grayscaled, and downsampled equiv.
     Arguments
-
     Arguments:
         img {[ndarray]} -- [description]
         shape {[tuple]} -- [tuple of the desired 2D dimensions of the final image]
-
     Returns:
         [cv.image] -- [numpy.Array]
     """
@@ -92,10 +89,8 @@ def imagePipeline(img):
 
 def writeTransform(imageSet, train=True):
     """Transforms and writes images to either the train or validation folder
-
     Arguments:
         imageSet {list} -- [full paths for each image file]
-
     Keyword Arguments:
         train {bool} -- [description] (default: {True})
     """
@@ -125,6 +120,8 @@ def writeTransform(imageSet, train=True):
         cv.imwrite(fullpath, new_image)
 
     return
+
+
 # 1: Get data neatly ordered
 pairs = []
 for label in labels_map:
@@ -139,8 +136,6 @@ x, y = df.image, df.label
 x_train, x_test, y_train, y_test = train_test_split(
     x, y, test_size=0.15, random_state=42
 )
-
-
 
 
 # transform and write train set
