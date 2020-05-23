@@ -5,124 +5,146 @@ Images are rescaled in accordance with the targeted classifier (resnet in this c
 """
 # imports
 import random
-import cv2 as cv
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import ImageGrid
-import numpy as np
 import os
+import cv2 as cv
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from PIL import Image
+from mpl_toolkits.axes_grid1 import ImageGrid
 from sklearn.model_selection import train_test_split
 
+# utility functions for inspecting image i/o
+from utils import generateFrameFileName, inspectNLabeledImages
+
+# System
+MAC_OS = True
 
 # Raw data sourcing paths
 IMAGE_FOLDER = "/Users/Erik/Dev/plugdetector/data/raw/images"  # label + uuid + ext
 PROCESSED_PATH = "/Users/Erik/Dev/plugdetector/data/processed"  # => dir val / train
+TEST_PATH = "/Users/Erik/Dev/plugdetector/data/test"
 
-# setup training and validation folders with nested folders for each label
-try:
-    os.makedirs(os.path.join(PROCESSED_PATH, "train"))
-except:
-    print("Could not generate train directory. They probably already exist")
-try:
-    os.makedirs(os.path.join(PROCESSED_PATH, "val"))
-except:
-    print("Could not generate val directory. They probably already exist")
+# Create train and validation folders inside proccessed
+for name in ["train", "valid"]:
+    try:
+        os.mkdir(os.path.join(PROCESSED_PATH, name))
+    except FileExistsError:
+        print("Could not create %s folder as it exists." % name)
 
 
 # get labels and their corresponding files; TODO: encapsulate into reusuable function
-rawImagePaths = os.listdir(IMAGE_FOLDER)[1:]  # [0] == .DS_Datastore
+rawImagePaths = os.listdir(IMAGE_FOLDER)[
+    int(MAC_OS) :
+]  # [0] == .DS_Datastore on mac systems
 labels = pd.Series(list(map(lambda path: path.split("-")[0], rawImagePaths))).unique()
+
 labels_map = {}
 for label in labels:
     labels_map[label] = pd.Series(rawImagePaths)[
         pd.Series(rawImagePaths).str.contains(label)
     ].tolist()
+    # print(label)
 
-
-# Inspect a random subset of images from a given label
-def inspectNLabeledImages(label, labeldict, n=4, image_folder=IMAGE_FOLDER):
-    """Utility function for inspected an N subset of images denoted by a given label from a given folder.
-
-    Arguments:
-        label {string} -- String representation of the class label for a given image
-        labeldict {dict} -- Dictionary containing a list of file references for each label (label: [filenames])
-
-    Keyword Arguments:
-        n {int} -- [how many random samples to showed] (default: {4})
-        image_folder {[string]} -- [Abs path to the source image folder] (default: {IMAGE_FOLDER})
-    """
-
-    # Ensure that we can always get a square grid
-    if n % 2 != 0:
-        n += 1
-
-    image_data = [
-        cv.imread(os.path.join(image_folder, path))
-        for path in random.sample(labels_map[label], n)
-    ]
-
-    fig = plt.figure(figsize=(10.0, 6.0))
-    fig.suptitle(label)
-    grid = ImageGrid(
-        fig,
-        111,  # similar to subplot(111)
-        nrows_ncols=(2, 2),  # creates 2x2 grid of axes
-        axes_pad=0.1,  # pad between axes in inch.
-    )
-
-    for ax, im in zip(grid, image_data):
-        # Iterating over the grid returns the Axes.
-        ax.imshow(im)
-
-    plt.show()
-
-    return
-
-
-# OUTPUT ALL LABELS
-for label in labels:
-    print(label)
 
 # Inspect a random subset of each class
 # for label in labels:
 #     inspectNLabeledImages(label, labels_map)
 
-""" With util out of the way, let's set up our data transformation pipeline """
 
-# Square image TODO: fix and incorperate into pipeline
-def squarifyImage(image, axis="x"):
-    raw_height, raw_width, channels = image.shape
-    size = raw_width if axis.lower() else raw_height
-    new_shape = (size // 2, size // 2, channels)
-    return np.resize(image, new_shape)
+# test_path = os.path.join(
+#     "/Users/Erik/Dev/plugdetector/data/test",
+#     "iphone_charger-17c8b67c-017c-4731-9cbd-e62b2b2ed3e3.jpg",
+# )
 
 
-def transformRawImages(image_files):
-
-    # read images
-    images = [
-        cv.imread(os.path.join(IMAGE_FOLDER, image_path)) for image_path in image_files
-    ]
-
-    # transform
-    images = [squarifyImage(image) for image in images]  # centercrop
-    images = [cv.cvtColor(image, cv.COLOR_BGR2GRAY) for image in images]  # grayscale
-
-    ### TODO: add downsampling step
-
-    return images
+def grayscale(img):
+    """Returns img as grayscaled"""
+    return cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
 
-# sample usage
-from utils import generateFrameFileName
+def squareCrop(img):
+    """Returns img cropped by the smallest axis (to make it square) """
+    new_size = (min(img.shape), min(img.shape))
+    return cv.resize(img, new_size)
 
-label = "usb_B"
-filename = generateFrameFileName(label)
-save_path = os.path.join(PROCESSED_PATH, "unsorted")
-transformed_images = transformRawImages(labels_map[label])
-print(len(transformed_images))
 
-for image in transformed_images:
-    fullPath = os.path.join(save_path, filename)
-    cv.imwrite(fullPath, image)
+def imagePipeline(img):
+    """Composes transformers into a pipeline that can be applied to multiple images.
+    Takes in a raw (opened) image and returns the square, grayscaled, and downsampled equiv.
+    Arguments
+
+    Arguments:
+        img {[ndarray]} -- [description]
+        shape {[tuple]} -- [tuple of the desired 2D dimensions of the final image]
+
+    Returns:
+        [cv.image] -- [numpy.Array]
+    """
+    gray = grayscale(img)
+    square = squareCrop(gray)
+
+    new_dims = tuple([dim // 4 for dim in square.shape])
+    final_image = cv.resize(square, (new_dims))
+
+    return final_image
+
+
+def writeTransform(imageSet, train=True):
+    """Transforms and writes images to either the train or validation folder
+
+    Arguments:
+        imageSet {list} -- [full paths for each image file]
+
+    Keyword Arguments:
+        train {bool} -- [description] (default: {True})
+    """
+
+    # set the target dir dep. if it is a training or validation set
+    if train:
+        save_folder = os.path.join(PROCESSED_PATH, "train")
+    else:
+        save_folder = os.path.join(PROCESSED_PATH, "valid")
+
+    # Get corresponding labels and create sub folders for each
+    labels = pd.Series(list(map(lambda path: path.split("-")[0], imageSet)))
+    for label in labels.unique():
+        try:
+            os.mkdir(os.path.join(save_folder, label))
+        except FileExistsError:
+            print("Could not create %s folder as it exists." % label)
+
+    # Save into corresponding folder
+    for label, image in zip(labels, imageSet):
+        # Transform image
+        old_image_path = os.path.join(IMAGE_FOLDER, image)
+        new_image = imagePipeline(cv.imread(old_image_path))
+        # Save
+        folder = os.path.join(save_folder, label)
+        fullpath = os.path.join(folder, image)
+        cv.imwrite(fullpath, new_image)
+
+    return
+# 1: Get data neatly ordered
+pairs = []
+for label in labels_map:
+    for path in labels_map[label]:
+        data = (label, path)
+        pairs.append(data)
+
+df = pd.DataFrame(data=pairs, columns=["label", "image"])
+x, y = df.image, df.label
+
+# 2: train test split
+x_train, x_test, y_train, y_test = train_test_split(
+    x, y, test_size=0.15, random_state=42
+)
+
+
+
+
+# transform and write train set
+writeTransform(x_train, train=True)
+
+# transform and write valid set
+writeTransform(x_test, train=False)
