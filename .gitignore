@@ -12,3 +12,6 @@ lib/
 
 # data 
 data/
+
+# models
+src/models/
