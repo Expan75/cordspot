@@ -7,4 +7,5 @@ TEST_PATH = "/Users/Erik/Dev/cordspot/data/test/test1.jpeg"
 # create request and send it
 res = post("http://127.0.0.1:5000/predict", files={"file": open(TEST_PATH, "rb")},)
 
+# output
 print(res.json())

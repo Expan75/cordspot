@@ -7,11 +7,8 @@ env/
 bin/
 include/
 lib/
-.Python
-.pt
+*.Python
+*.pt
 
 # data 
 data/
-
-# models
-src/models/
