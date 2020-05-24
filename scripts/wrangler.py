@@ -20,9 +20,9 @@ from utils import generateFrameFileName, inspectNLabeledImages
 MAC_OS = True
 
 # Raw data sourcing paths
-IMAGE_FOLDER = "/Users/Erik/Dev/plugdetector/data/raw/images"  # label + uuid + ext
-PROCESSED_PATH = "/Users/Erik/Dev/plugdetector/data/processed"  # => dir val / train
-TEST_PATH = "/Users/Erik/Dev/plugdetector/data/test"
+IMAGE_FOLDER = "/Users/Erik/Dev/cordspot/data/raw/images"  # label + uuid + ext
+PROCESSED_PATH = "/Users/Erik/Dev/cordspot/data/processed"  # => dir val / train
+TEST_PATH = "/Users/Erik/Dev/cordspot/data/test"
 
 # Create train and validation folders inside proccessed
 for name in ["train", "valid"]:
@@ -52,7 +52,7 @@ for label in labels:
 
 
 # test_path = os.path.join(
-#     "/Users/Erik/Dev/plugdetector/data/test",
+#     "/Users/Erik/Dev/cordspot/data/test",
 #     "iphone_charger-17c8b67c-017c-4731-9cbd-e62b2b2ed3e3.jpg",
 # )
 
@@ -134,7 +134,7 @@ x, y = df.image, df.label
 
 # 2: train test split
 x_train, x_test, y_train, y_test = train_test_split(
-    x, y, test_size=0.15, random_state=42
+    x, y, test_size=0.25, random_state=42
 )
 
 

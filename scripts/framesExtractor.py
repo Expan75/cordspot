@@ -8,8 +8,8 @@ import os
 from uuid import uuid4 as uuid
 
 # PATH SETUP: abs for now... TODO: make relative
-VIDEO_FOLDER = "/Users/Erik/Dev/plugdetector/data/raw/videos"
-IMAGE_FOLDER = "/Users/Erik/Dev/plugdetector/data/raw/images"
+VIDEO_FOLDER = "/Users/Erik/Dev/cordspot/data/raw/videos"
+IMAGE_FOLDER = "/Users/Erik/Dev/cordspot/data/raw/images"
 
 # util function for formatting filename path
 def formatPath(filename, action="load"):
@@ -20,7 +20,7 @@ def formatPath(filename, action="load"):
 
 
 # util for generating valid file names containing uuid + class labels
-def generateFrameFileName(label, extension=".jpg"):
+def generateFrameFileName(label, extension=".jpeg"):
     return f"{label}-" + str(uuid()) + extension
 
 
@@ -54,7 +54,7 @@ def videos2Frames(video_dir, image_dir, nth_frame=30):
 
         while success:
             # video filmed by iphone6 are filed in 30fps (no big difference from frame to frame => bias)
-            filename = generateFrameFileName(label, ".jpg")
+            filename = generateFrameFileName(label, ".jpeg")
             fullpath = os.path.join(IMAGE_FOLDER, filename)
             imgPaths.append(fullpath)
             if not cv.imwrite(fullpath, image):
